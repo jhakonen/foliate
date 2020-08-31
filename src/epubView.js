@@ -39,6 +39,11 @@ const CHARACTERS_PER_PAGE = 1024
 // that way we can clear the cache
 const FB2_CONVERTER_VERSION = '2.4.0'
 
+// threshold for touchscreen swipe velocity, velocity lower than this is either
+// ignored or considered as a touch tap, velocity higher than this is
+// considered as a swipe that will turn pages
+const SWIPE_SENSIVITY = 800
+
 // the `__ibooks_internal_theme` attribute is set on `:root` in Apple Books
 // can be used by books to detect dark theme without JavaScript
 const getIbooksInternalTheme = bgColor => {
@@ -488,6 +493,8 @@ var EpubView = GObject.registerClass({
             param_types: [GObject.TYPE_STRING, GObject.TYPE_BOOLEAN, GObject.TYPE_BOOLEAN]
         },
         'should-reload': { flags: GObject.SignalFlags.RUN_FIRST },
+        'touch-swipe-left': { flags: GObject.SignalFlags.RUN_FIRST },
+        'touch-swipe-right': { flags: GObject.SignalFlags.RUN_FIRST },
     }
 }, class EpubView extends GObject.Object {
     _init(params) {
@@ -619,6 +626,32 @@ var EpubView = GObject.registerClass({
         this._connectSettings()
         this._connectData()
         this.connect('book-error', (_, msg) => logError(new Error(msg)))
+
+        this._swipeGesture = new Gtk.GestureSwipe({ widget: this._webView })
+        this._swipeGesture.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+        this._swipeGesture.set_touch_only(true)
+
+        this._pressGesture = new Gtk.GestureMultiPress({ widget: this._webView })
+        this._pressGesture.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+        this._pressGesture.set_touch_only(true)
+        this._pressGesture.connect('released', (_, __, x, y) => {
+            const [,
+                velocity_x,
+                velocity_y
+            ] = this._swipeGesture.get_velocity()
+            if (Math.abs(velocity_y) < SWIPE_SENSIVITY) {
+                if (velocity_x > SWIPE_SENSIVITY) {
+                    this.emit('touch-swipe-right')
+                } else if (velocity_x < -SWIPE_SENSIVITY) {
+                    this.emit('touch-swipe-left')
+                } else {
+                    this.emit('click', this._webView.get_allocated_width(), x)
+                }
+            }
+        })
+
+        // Prevent touch events translating to emulated mouse events
+        this._webView.connect('touch-event', () => true);
     }
     _connectSettings() {
         this._zoomLevel = this.settings.zoom_level

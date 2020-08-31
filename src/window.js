@@ -1028,6 +1028,14 @@ var Window = GObject.registerClass({
             else if (place < 1/3) goLeft()
             else toggleControls()
         })
+        this._epub.connect('touch-swipe-left', (epub) => {
+            const rtl = epub.metadata.direction === 'rtl'
+            rtl ? epub.prev() : epub.next()
+        })
+        this._epub.connect('touch-swipe-right', (epub) => {
+            const rtl = epub.metadata.direction === 'rtl'
+            rtl ? epub.next() : epub.prev()
+        })
         this._epub.connect('book-displayed', () => this.loading = false)
         this._epub.connect('book-loading', () => {
             this.loading = true
