@@ -1028,6 +1028,21 @@ var Window = GObject.registerClass({
             else if (place < 1/3) goLeft()
             else toggleControls()
         })
+        this._epub.connect('scroll', (epub, source, deltaX, deltaY) => {
+            if (source === Gdk.InputSource.TOUCHSCREEN) return
+            if (!epub.isPaginated) return
+            epub.getWindowIsZoomed()
+                .then((isZoomed) => {
+                    if (isZoomed) return
+                    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                        if (deltaX > 0) goRight()
+                        else if (deltaX < 0) goLeft()
+                    } else {
+                        if (deltaY > 0) epub.next()
+                        else if (deltaY < 0) epub.prev()
+                    }
+                })
+        })
         this._epub.connect('touch-swipe-left', (epub) => {
             const rtl = epub.metadata.direction === 'rtl'
             rtl ? epub.prev() : epub.next()

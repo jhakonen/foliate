@@ -22,7 +22,8 @@ const { EpubCFI } = imports.epubcfi
 const {
     debug, error, markupEscape, regexEscape,
     Storage, disconnectAllHandlers, base64ToPixbuf,
-    mimetypes, mimetypeIs, execCommand, recursivelyDeleteDir
+    mimetypes, mimetypeIs, execCommand, recursivelyDeleteDir,
+    setTimeout
 } = imports.utils
 
 const python = GLib.find_program_in_path('python') || GLib.find_program_in_path('python3')
@@ -488,6 +489,10 @@ var EpubView = GObject.registerClass({
             flags: GObject.SignalFlags.RUN_FIRST,
             param_types: [GObject.TYPE_INT, GObject.TYPE_INT]
         },
+        'scroll': {
+            flags: GObject.SignalFlags.RUN_FIRST,
+            param_types: [GObject.TYPE_INT, GObject.TYPE_DOUBLE, GObject.TYPE_DOUBLE]
+        },
         'speech': {
             flags: GObject.SignalFlags.RUN_FIRST,
             param_types: [GObject.TYPE_STRING, GObject.TYPE_BOOLEAN, GObject.TYPE_BOOLEAN]
@@ -650,8 +655,27 @@ var EpubView = GObject.registerClass({
             }
         })
 
-        // Prevent touch events translating to emulated mouse events
-        this._webView.connect('touch-event', () => true);
+        const scrolling = { x: 0, y: 0, source: null, running: false }
+        this._webView.connect('scroll-event', (_, event) => {
+            const source = event.get_source_device().get_source()
+            if (scrolling.running && scrolling.source !== source) return
+
+            const [, deltaX, deltaY] = event.get_scroll_deltas()
+            scrolling.x += deltaX
+            scrolling.y += deltaY
+
+            if (!scrolling.running) {
+                scrolling.running = true
+                scrolling.source = source
+                setTimeout(() => {
+                    this.emit('scroll', scrolling.source, scrolling.x, scrolling.y)
+                    scrolling.running = false
+                    scrolling.source = null
+                    scrolling.x = 0
+                    scrolling.y = 0
+                }, 100)
+            }
+        })
     }
     _connectSettings() {
         this._zoomLevel = this.settings.zoom_level
@@ -1208,6 +1232,9 @@ var EpubView = GObject.registerClass({
     }
     getSectionFromCfi(cfi) {
         return this._get(`getSectionFromCfi('${cfi}')`)
+    }
+    getWindowIsZoomed() {
+        return this._eval('getWindowIsZoomed()')
     }
     get sectionMarks() {
         return this._get('sectionMarks')
