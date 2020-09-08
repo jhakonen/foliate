@@ -628,15 +628,7 @@ var EpubView = GObject.registerClass({
         this._swipeGesture = new Gtk.GestureSwipe({ widget: this._webView })
         this._swipeGesture.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
         this._swipeGesture.set_touch_only(true)
-
-        this._pressGesture = new Gtk.GestureMultiPress({ widget: this._webView })
-        this._pressGesture.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
-        this._pressGesture.set_touch_only(true)
-        this._pressGesture.connect('released', () => {
-            const [,
-                velocity_x,
-                velocity_y
-            ] = this._swipeGesture.get_velocity()
+        this._swipeGesture.connect('swipe', (_, velocity_x, velocity_y) => {
             if (Math.abs(velocity_y) < SWIPE_SENSIVITY) {
                 if (velocity_x > SWIPE_SENSIVITY) {
                     this.goLeft()
@@ -653,6 +645,8 @@ var EpubView = GObject.registerClass({
             if (!this.isPaginated) return
             if (this._webView.zoom_level !== 1) return
 
+            // ignore touchscreen scroll events as webkit already handles those
+            // by default to pan the page
             const source = event.get_source_device().get_source()
             if (source === Gdk.InputSource.TOUCHSCREEN) return
 
