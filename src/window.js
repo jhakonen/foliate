@@ -1018,14 +1018,9 @@ var Window = GObject.registerClass({
                     this._autoHideHeaderBar.alwaysReveal(visible)
             }
             if (!epub.isPaginated) return toggleControls()
-
-            const rtl = epub.metadata.direction === 'rtl'
-            const goRight = () => rtl ? epub.prev() : epub.next()
-            const goLeft = () => rtl ? epub.next() : epub.prev()
-
             const place = position / width
-            if (place > 2/3) goRight()
-            else if (place < 1/3) goLeft()
+            if (place > 2/3) epub.goRight()
+            else if (place < 1/3) epub.goLeft()
             else toggleControls()
         })
         this._epub.connect('scroll', (epub, source, deltaX, deltaY) => {
@@ -1035,8 +1030,8 @@ var Window = GObject.registerClass({
                 .then((isZoomed) => {
                     if (isZoomed) return
                     if (Math.abs(deltaX) > Math.abs(deltaY)) {
-                        if (deltaX > 0) goRight()
-                        else if (deltaX < 0) goLeft()
+                        if (deltaX > 0) epub.goRight()
+                        else if (deltaX < 0) epub.goLeft()
                     } else {
                         if (deltaY > 0) epub.next()
                         else if (deltaY < 0) epub.prev()

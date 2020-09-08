@@ -40,9 +40,8 @@ const CHARACTERS_PER_PAGE = 1024
 // that way we can clear the cache
 const FB2_CONVERTER_VERSION = '2.4.0'
 
-// threshold for touchscreen swipe velocity, velocity lower than this is either
-// ignored or considered as a touch tap, velocity higher than this is
-// considered as a swipe that will turn pages
+// threshold for touchscreen swipe velocity, velocity higher than this is considered as a swipe
+// that will turn pages
 const SWIPE_SENSIVITY = 800
 
 // the `__ibooks_internal_theme` attribute is set on `:root` in Apple Books
@@ -649,8 +648,6 @@ var EpubView = GObject.registerClass({
                     this.emit('touch-swipe-right')
                 } else if (velocity_x < -SWIPE_SENSIVITY) {
                     this.emit('touch-swipe-left')
-                } else {
-                    this.emit('click', this._webView.get_allocated_width(), x)
                 }
             }
         })
@@ -1182,6 +1179,14 @@ var EpubView = GObject.registerClass({
     }
     async goToPercentage(x) {
         this.goTo(await this._get(`book.locations.cfiFromPercentage(${x})`))
+    }
+    goRight() {
+        const rtl = this.metadata.direction === 'rtl'
+        rtl ? this.prev() : this.next()
+    }
+    goLeft() {
+        const rtl = this.metadata.direction === 'rtl'
+        rtl ? this.next() : this.prev()
     }
     back() {
         if (!this._history.length) return
