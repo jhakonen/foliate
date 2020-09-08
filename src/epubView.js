@@ -488,17 +488,11 @@ var EpubView = GObject.registerClass({
             flags: GObject.SignalFlags.RUN_FIRST,
             param_types: [GObject.TYPE_INT, GObject.TYPE_INT]
         },
-        'scroll': {
-            flags: GObject.SignalFlags.RUN_FIRST,
-            param_types: [GObject.TYPE_INT, GObject.TYPE_DOUBLE, GObject.TYPE_DOUBLE]
-        },
         'speech': {
             flags: GObject.SignalFlags.RUN_FIRST,
             param_types: [GObject.TYPE_STRING, GObject.TYPE_BOOLEAN, GObject.TYPE_BOOLEAN]
         },
         'should-reload': { flags: GObject.SignalFlags.RUN_FIRST },
-        'touch-swipe-left': { flags: GObject.SignalFlags.RUN_FIRST },
-        'touch-swipe-right': { flags: GObject.SignalFlags.RUN_FIRST },
     }
 }, class EpubView extends GObject.Object {
     _init(params) {
@@ -645,31 +639,40 @@ var EpubView = GObject.registerClass({
             ] = this._swipeGesture.get_velocity()
             if (Math.abs(velocity_y) < SWIPE_SENSIVITY) {
                 if (velocity_x > SWIPE_SENSIVITY) {
-                    this.emit('touch-swipe-right')
+                    this.goLeft()
                 } else if (velocity_x < -SWIPE_SENSIVITY) {
-                    this.emit('touch-swipe-left')
+                    this.goRight()
                 }
             }
         })
 
-        const scrolling = { x: 0, y: 0, source: null, running: false }
+        let scrollX = 0
+        let scrollY = 0
+        let scrollRunning = false
         this._webView.connect('scroll-event', (_, event) => {
+            if (!this.isPaginated) return
+            if (this._webView.zoom_level !== 1) return
+
             const source = event.get_source_device().get_source()
-            if (scrolling.running && scrolling.source !== source) return
+            if (source === Gdk.InputSource.TOUCHSCREEN) return
 
             const [, deltaX, deltaY] = event.get_scroll_deltas()
-            scrolling.x += deltaX
-            scrolling.y += deltaY
+            scrollX += deltaX
+            scrollY += deltaY
 
-            if (!scrolling.running) {
-                scrolling.running = true
-                scrolling.source = source
+            if (!scrollRunning) {
+                scrollRunning = true
                 setTimeout(() => {
-                    this.emit('scroll', scrolling.source, scrolling.x, scrolling.y)
-                    scrolling.running = false
-                    scrolling.source = null
-                    scrolling.x = 0
-                    scrolling.y = 0
+                    if (Math.abs(scrollX) > Math.abs(scrollY)) {
+                        if (scrollX > 0) this.goRight()
+                        else if (scrollX < 0) this.goLeft()
+                    } else {
+                        if (scrollY > 0) this.next()
+                        else if (scrollY < 0) this.prev()
+                    }
+                    scrollRunning = false
+                    scrollX = 0
+                    scrollY = 0
                 }, 100)
             }
         })
@@ -1237,9 +1240,6 @@ var EpubView = GObject.registerClass({
     }
     getSectionFromCfi(cfi) {
         return this._get(`getSectionFromCfi('${cfi}')`)
-    }
-    getWindowIsZoomed() {
-        return this._eval('getWindowIsZoomed()')
     }
     get sectionMarks() {
         return this._get('sectionMarks')
