@@ -638,7 +638,7 @@ var EpubView = GObject.registerClass({
         this._pressGesture = new Gtk.GestureMultiPress({ widget: this._webView })
         this._pressGesture.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
         this._pressGesture.set_touch_only(true)
-        this._pressGesture.connect('released', (_, __, x, y) => {
+        this._pressGesture.connect('released', () => {
             const [,
                 velocity_x,
                 velocity_y
